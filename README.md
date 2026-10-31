@@ -1,2 +1,122 @@
-# LLM-CECM-raw
-Multi-agent simulation framework for coupled electricity and carbon markets.
+# LLM-CECM
+
+Development snapshot of the LLM-CECM simulation framework.
+
+LLM-CECM is a multi-agent simulation of a coupled electricity and carbon market. Generator agents submit joint bids for energy, reserve and carbon allowances each round. The market clears energy and reserve with optimal power flow on IEEE test systems (via PYPOWER) and settles carbon trading through an order-book carbon market.
+
+Agent types:
+
+- **LLM agents** decide bids with a large language model, supported by belief and memory modules. They include two mechanisms:
+  - **ADF (Adaptive Decision Frequency)**: calls the LLM only when performance, volatility, event or periodic triggers fire, and uses heuristic bids otherwise.
+  - **IBR-CR (Iterative Belief Revision with Counterfactual Reasoning)**: a three-step reasoning chain (initial bid, simulated competitor response, revised bid).
+- **RL agents**: PPO policies (Stable-Baselines3).
+- **RB agents**: rule-based bidding on marginal cost.
+
+## Repository structure
+
+```text
+.
+├── agents/                 Agent implementations
+│   ├── base_agent.py
+│   ├── llm_agent.py        LLM agent with ADF and IBR-CR switches
+│   ├── adf_module.py       ADF triggers and heuristic decisions
+│   ├── belief_module.py
+│   ├── memory_module.py
+│   ├── rl_agent.py
+│   ├── rl_agent_enhanced.py
+│   └── zi_agent.py         Rule-based agent
+├── market/                 Market clearing and settlement
+│   ├── market_environment.py
+│   ├── clearing_mechanism.py   OPF-based joint energy-reserve clearing
+│   ├── carbon_market.py
+│   └── coupled_market.py
+├── simulation/             Simulation loop and configuration
+│   ├── simulator.py
+│   ├── config.py
+│   ├── event_manager.py
+│   └── behavior_analyzer.py
+├── llm_interface/          LLM client and prompt templates
+├── utils/                  Logging, bid validation, plotting
+├── australia_market/       Australian market experiment
+│   ├── main.py
+│   ├── true_digital_twin_agents.json   50 generator agents based on AEMO NEM units
+│   ├── generate_true_digital_twin_agents.py
+│   ├── tools/
+│   ├── train_multi_agent_rl.py
+│   ├── train_rl_enhanced.py
+│   └── calculate_forecast_metrics.py
+├── adf_ibr_cr/             ADF and IBR-CR experiments
+│   ├── main.py
+│   └── test_*.py           Switch and mechanism tests
+└── requirements.txt
+```
+
+The shared packages (`agents`, `market`, `simulation`, `llm_interface`, `utils`) live at the repository root. Scripts in `australia_market/` and `adf_ibr_cr/` import them from there.
+
+## Installation
+
+Developed with Python 3.12.
+
+```bash
+pip install -r requirements.txt
+```
+
+LLM agents call the Google Generative Language API. The model is set by `LLM_MODEL_NAME` in `simulation/config.py` (default `gemma-3-27b-it`). Provide API keys through an environment variable; separate multiple keys with commas:
+
+```bash
+export GOOGLE_API_KEY="your-key-1,your-key-2"
+```
+
+## Running
+
+Run each entry point from its own folder, with the repository root on `PYTHONPATH`. Results, logs and figures are written to `results/` inside that folder.
+
+### Australian market experiment
+
+```bash
+cd australia_market
+PYTHONPATH=.. python main.py
+```
+
+This runs a 10-round coupled market with the 50 agents in `true_digital_twin_agents.json`, including gas price, coal outage, demand and renewable output dynamics. The bidding mode is set by `run_mode` in `main.py`:
+
+| `run_mode` | Agents |
+|---|---|
+| `"LLM"` (default) | LLM agents; ADF and IBR-CR settings come from each agent's `llm_config` in the JSON file |
+| `"RL"` | PPO policies loaded from `models/multi_agent_high_price/`, produced by `train_multi_agent_rl.py` |
+| `"RB"` | Rule-based agents |
+
+Other scripts in this folder:
+
+- `generate_true_digital_twin_agents.py`: builds `true_digital_twin_agents.json` from AEMO public data. It expects `downloads/PUBLIC_DVD_DISPATCH_UNIT_SCADA_202204010000.CSV` and `downloads/NEM Generation Information July 2025 (1).xlsx`, plus `tools/fuel_dynamic_ratios.json`.
+- `train_multi_agent_rl.py`: trains PPO policies for selected agents and saves them to `models/multi_agent_high_price/`.
+- `calculate_forecast_metrics.py`: computes MAPE and MASE between `results/simulation_results.csv` and the reference electricity and carbon price series.
+
+### ADF and IBR-CR experiments
+
+```bash
+cd adf_ibr_cr
+PYTHONPATH=.. python main.py
+```
+
+The entry point loads `get_config()` from `simulation/config.py`. The default configuration uses 50 RL agents over 72 rounds. For LLM agents, set `agent_type` to `"LLM"` and configure ADF and IBR-CR per agent in `llm_config`:
+
+```python
+"llm_config": {
+    "model": "gemma-3-27b-it",
+    "enable_adf": True,      # Adaptive Decision Frequency
+    "enable_ibr_cr": True    # Iterative Belief Revision with Counterfactual Reasoning
+}
+```
+
+Both switches default to `True` when omitted. LLM agents can also be generated by the LLM in batches by setting `auto_generate_agents` and `agent_generation` in the configuration.
+
+Tests for the switches and the ADF mechanism:
+
+```bash
+cd adf_ibr_cr
+PYTHONPATH=.. python test_adf_switch.py
+PYTHONPATH=.. python test_ibr_cr_switch.py
+PYTHONPATH=.. python test_adf_mechanism.py
+PYTHONPATH=.. python test_adf_integration.py
+```

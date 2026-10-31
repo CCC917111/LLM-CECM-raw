@@ -1,0 +1,33 @@
+# LLM电力市场仿真系统依赖包
+# Python版本要求: >=3.11, <3.14 (推荐3.12)
+# 系统要求: macOS/Linux/Windows
+
+# 数据处理和科学计算
+pandas>=1.5.0
+numpy>=1.24.0,<2.0.0  # PyPower兼容性要求
+scipy>=1.10.0
+
+# LLM接口
+google-generativeai>=0.3.0
+requests>=2.28.0
+
+# 数据可视化
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# 电力系统计算
+pypower>=5.1.0
+
+# 配置和日志
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+pyyaml>=6.0
+
+# 测试工具（可选）
+pytest>=7.0.0
+
+# 强化学习训练与推理（可选）
+gymnasium>=0.29.1
+stable-baselines3>=2.3.0
+tensorboard>=2.14.0
+torch>=2.1.0
