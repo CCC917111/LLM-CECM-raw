@@ -48,6 +48,7 @@ Agent types:
 ├── adf_ibr_cr/             ADF and IBR-CR experiments
 │   ├── main.py
 │   └── test_*.py           Switch and mechanism tests
+├── historical_results/       Recorded runs A, B and C
 └── requirements.txt
 ```
 
@@ -120,3 +121,7 @@ PYTHONPATH=.. python test_ibr_cr_switch.py
 PYTHONPATH=.. python test_adf_mechanism.py
 PYTHONPATH=.. python test_adf_integration.py
 ```
+
+## Historical simulation results
+
+Recorded outputs for three 72-round, 50-agent LLM runs are provided in [historical_results/](historical_results/README.md), including market prices, agent parameters and profit summaries.
